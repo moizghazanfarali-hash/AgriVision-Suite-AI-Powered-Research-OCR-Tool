@@ -48,7 +48,7 @@ st.write("Digitize field notes and analyze complex agricultural datasets instant
 
 # Agar model ready nahi hai toh app block kar dein
 if model is None:
-    st.info("👈 Sidebar mein apni API Key enter karein taake tool activate ho sakay.")
+    st.info("👈Please enter your Gemini API Key in the sidebar to activate the tools.")
     st.stop()
 
 # Tabs
