@@ -28,7 +28,7 @@ with st.sidebar:
         try:
             genai.configure(api_key=final_api_key)
             # Gemini 2.5 Flash setup
-            model = genai.GenerativeModel(model_name='gemini-1.5-flash') # Currently 1.5 is standard, use 2.5 if available
+            model = genai.GenerativeModel(model_name='gemini-2.5-flash') # Currently 1.5 is standard, use 2.5 if available
             st.success("✅ API Key Connected!")
         except Exception as e:
             st.error(f"❌ Invalid Key: {e}")
