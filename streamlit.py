@@ -5,98 +5,83 @@ from dotenv import load_dotenv
 import ocr_engine
 import agri_engine
 
-# Load environment
+# Load environment (for local testing)
 load_dotenv()
-api_key = os.getenv("GEMINI_API_KEY")
-
-if api_key:
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(model_name='gemini-2.5-flash')
-else:
-    model = None
 
 # Page config
-st.set_page_config(page_title="AI Document Suite", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="AgriVision AI Suite", page_icon="🌾", layout="wide")
 
-# Simple header
-st.title("🤖 AI Document Suite")
-st.write("Extract text from images or analyze agricultural documents")
+# ============================================
+# SIDEBAR: API KEY MANAGEMENT
+# ============================================
+with st.sidebar:
+    st.title("⚙️ Settings")
+    st.write("Enter your Google Gemini API Key to start.")
+    
+    # User se key lena
+    user_api_key = st.text_input("Gemini API Key", type="password", help="Get your key from: https://aistudio.google.com/app/apikey")
+    
+    # Priority: 1. User Input, 2. .env file
+    final_api_key = user_api_key if user_api_key else os.getenv("GEMINI_API_KEY")
 
-# Check API key
-if not api_key:
-    st.error("⚠️ API Key not found. Add GEMINI_API_KEY to .env file")
+    if final_api_key:
+        try:
+            genai.configure(api_key=final_api_key)
+            # Gemini 2.5 Flash setup
+            model = genai.GenerativeModel(model_name='gemini-1.5-flash') # Currently 1.5 is standard, use 2.5 if available
+            st.success("✅ API Key Connected!")
+        except Exception as e:
+            st.error(f"❌ Invalid Key: {e}")
+            model = None
+    else:
+        st.warning("⚠️ Please enter an API Key to continue.")
+        model = None
+
+    st.write("---")
+    st.info("Note: Your key is not stored and is only used for this session.")
+
+# ============================================
+# MAIN UI
+# ============================================
+st.title("🤖 AgriVision AI Suite")
+st.write("Digitize field notes and analyze complex agricultural datasets instantly.")
+
+# Agar model ready nahi hai toh app block kar dein
+if model is None:
+    st.info("👈 Sidebar mein apni API Key enter karein taake tool activate ho sakay.")
     st.stop()
 
 # Tabs
-tab1, tab2 = st.tabs(["📸 OCR", "🌾 Agricultural Analysis"])
+tab1, tab2 = st.tabs(["📸 Image OCR", "🌾 Agri-Research Analysis"])
 
-# ============================================
-# TAB 1: OCR
-# ============================================
+# --- TAB 1: OCR Logic ---
 with tab1:
-    st.header("Extract Text from Images")
-    
-    uploaded_image = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png", "bmp", "gif"])
+    st.header("📸 Field Notes OCR")
+    st.write("Upload an image of handwritten notes or printed reports.")
+    uploaded_image = st.file_uploader("Upload Image", type=["jpg", "png", "jpeg"])
     
     if st.button("Extract Text"):
-        if uploaded_image is None:
-            st.error("Please upload an image first")
-        else:
-            with st.spinner("Extracting text..."):
+        if uploaded_image:
+            with st.spinner("Processing image..."):
                 image_bytes = uploaded_image.read()
-                extracted_text = ocr_engine.extract_text_from_image(image_bytes, model)
-                
-                if "Error" in extracted_text:
-                    st.error(extracted_text)
-                else:
-                    st.success("Text extracted successfully!")
-                    st.text_area("Extracted Text:", value=extracted_text, height=300)
-                    
-                    st.download_button(
-                        label="Download Text",
-                        data=extracted_text,
-                        file_name=f"extracted_{uploaded_image.name.split('.')[0]}.txt",
-                        mime="text/plain"
-                    )
-
-# ============================================
-# TAB 2: AGRICULTURAL ANALYSIS
-# ============================================
-with tab2:
-    st.header("Analyze Agricultural Documents")
-    
-    uploaded_file = st.file_uploader("Upload a document", type=["pdf", "docx", "xlsx", "csv"])
-    
-    question = st.text_area("Ask a question about the document:", height=100)
-    
-    if st.button("Analyze"):
-        if uploaded_file is None:
-            st.error("Please upload a document first")
-        elif not question.strip():
-            st.error("Please enter a question")
+                text = ocr_engine.extract_text_from_image(image_bytes, model)
+                st.text_area("Extracted Result:", text, height=250)
         else:
-            with st.spinner("Analyzing..."):
-                file_bytes = uploaded_file.read()
-                answer = agri_engine.process_agri_document(
-                    file_bytes,
-                    uploaded_file.name,
-                    question,
-                    model
-                )
-                
-                if "Error" in answer or "Blocked" in answer:
-                    st.error(answer)
-                else:
-                    st.success("Analysis complete!")
-                    st.write(answer)
-                    
-                    result_text = f"Question: {question}\n\nAnswer:\n{answer}"
-                    st.download_button(
-                        label="Download Results",
-                        data=result_text,
-                        file_name=f"analysis_{uploaded_file.name.split('.')[0]}.txt",
-                        mime="text/plain"
-                    )
+            st.warning("Please upload an image.")
 
-st.write("---")
-st.write("Simple AI Document Suite | Powered by Google Gemini 2.5")
+# --- TAB 2: Agri Logic ---
+with tab2:
+    st.header("🌾 Agri-Document Chat")
+    st.write("Analyze PDF, Excel, or CSV files using AI.")
+    uploaded_file = st.file_uploader("Upload Document", type=["pdf", "csv", "xlsx", "docx"])
+    user_query = st.text_input("Ask a question about this data:")
+
+    if st.button("Run Analysis"):
+        if uploaded_file and user_query:
+            with st.spinner("Analyzing document..."):
+                file_bytes = uploaded_file.read()
+                response = agri_engine.process_agri_document(file_bytes, uploaded_file.name, user_query, model)
+                st.markdown("### 🤖 AI Response:")
+                st.write(response)
+        else:
+            st.warning("Please upload a file and enter a question.")
